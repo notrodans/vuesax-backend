@@ -1,9 +1,8 @@
-import { Body, Controller, NotFoundException, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Post, UseGuards } from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import { LoginDto } from "./dto/auth-login.dto";
 import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { TokensDto } from "./dto/auth-token.dto";
-import { AuthUpdateDto } from "./dto/auth-update.dto";
 import { JwtAuthGuard } from "./guards/auth-guard";
 
 @Controller("auth")
@@ -27,13 +26,10 @@ export class AuthController {
 
 	@UseGuards(JwtAuthGuard)
 	@Post("refresh")
-	async refresh(@Body() refreshData: { refreshToken: string }): Promise<TokensDto> {
-		return await this.authService.refreshTokens(refreshData.refreshToken);
-	}
-
-	@UseGuards(JwtAuthGuard)
-	@Post("update")
-	async update(@Body() updateBody: { email: string; data: AuthUpdateDto }) {
-		return await this.authService.update({ email: updateBody.email }, updateBody.data);
+	async refresh(
+		@Body() refreshData: { refreshToken: string }
+	): Promise<Omit<TokensDto, "refreshToken">> {
+		const refresh = await this.authService.refreshToken(refreshData.refreshToken);
+		return refresh;
 	}
 }

@@ -1,13 +1,12 @@
 import { HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { Prisma, User } from "@prisma/client";
+import { Roles, User } from "@prisma/client";
 import { hash, verify } from "argon2";
 import { PrismaService } from "../database/prisma.service";
 import { UserService } from "../user/user.service";
 import { LoginDto } from "./dto/auth-login.dto";
 import { AuthRegisterDto } from "./dto/auth-register.dto";
 import { TokensDto } from "./dto/auth-token.dto";
-import { AuthUpdateDto } from "./dto/auth-update.dto";
 
 @Injectable()
 export class AuthService {
@@ -18,17 +17,13 @@ export class AuthService {
 	) {}
 
 	async validateUser(email: string, password: string): Promise<User> {
-		const user = await this.prisma.user.findUnique({ where: { email } });
-		if (!user) {
-			throw new UnauthorizedException("Wrong email");
+		try {
+			const user = await this.prisma.user.findUnique({ where: { email } });
+			await verify(user?.password, password);
+			return user;
+		} catch {
+			throw new UnauthorizedException("Неверные данные");
 		}
-
-		const isPasswordValid = await verify(user.password, password);
-		if (!isPasswordValid) {
-			throw new UnauthorizedException("Wrong password");
-		}
-
-		return user;
 	}
 
 	async login(userData: LoginDto): Promise<{
@@ -62,13 +57,16 @@ export class AuthService {
 		}
 
 		const hashedPassword = await hash(user.password);
+		const refreshToken = this.createRefreshToken({ email: user.email, roles: [Roles.USER] });
 
 		const userData = {
 			email: user.email,
 			login: user.login,
 			firstName: user.firstName,
 			lastName: user.lastName,
-			password: hashedPassword
+			password: hashedPassword,
+			roles: [Roles.USER],
+			refreshToken
 		};
 
 		const newUser = await this.userService.create(userData);
@@ -76,7 +74,7 @@ export class AuthService {
 		return newUser;
 	}
 
-	async refreshTokens(refreshToken: string): Promise<TokensDto> {
+	async refreshToken(refreshToken: string): Promise<Omit<TokensDto, "refreshToken">> {
 		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { iat, exp, ...payload } = await this.jwtService.verify(refreshToken);
 		const user = await this.userService.findByEmail(payload.email);
@@ -84,27 +82,17 @@ export class AuthService {
 			throw new HttpException("User was not found", 409);
 		}
 
-		if (user && user.refreshToken === refreshToken) {
-			const accessToken = this.jwtService.sign(payload);
-			const newRefreshToken = this.jwtService.sign(payload, { expiresIn: "7d" });
-			await this.userService.update({ id: user.id }, { refreshToken: newRefreshToken });
-			return {
-				accessToken,
-				refreshToken: newRefreshToken
-			};
+		if (user.refreshToken === refreshToken) {
+			const accessToken = this.createAccessToken(payload);
+			return { accessToken };
 		}
 	}
 
-	async update(where: Prisma.UserWhereUniqueInput, updateDto: AuthUpdateDto) {
-		return await this.userService.update(where, updateDto);
+	createAccessToken(payload: { email: string; roles: Roles[] }) {
+		return this.jwtService.sign(payload);
 	}
 
-	async createTokens(email: string) {
-		const accessToken = this.jwtService.sign({ email });
-		const refreshToken = this.jwtService.sign({ email }, { expiresIn: "7d" });
-		return {
-			accessToken,
-			refreshToken
-		};
+	createRefreshToken(payload: { email: string; roles: Roles[] }) {
+		return this.jwtService.sign(payload, { expiresIn: "7d" });
 	}
 }
