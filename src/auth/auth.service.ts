@@ -1,6 +1,6 @@
-import { HttpException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { HttpException, Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { Roles, User } from "@prisma/client";
+import { Role, User } from "@prisma/client";
 import { hash, verify } from "argon2";
 import { PrismaService } from "../database/prisma.service";
 import { UserService } from "../user/user.service";
@@ -17,13 +17,11 @@ export class AuthService {
 	) {}
 
 	async validateUser(email: string, password: string): Promise<User> {
-		try {
-			const user = await this.prisma.user.findUnique({ where: { email } });
-			await verify(user?.password, password);
+		const user = await this.prisma.user.findUnique({ where: { email } });
+		if (user && (await verify(user?.password, password))) {
 			return user;
-		} catch {
-			throw new UnauthorizedException("Неверные данные");
 		}
+		return null;
 	}
 
 	async login(userData: LoginDto): Promise<{
@@ -39,7 +37,6 @@ export class AuthService {
 				refreshToken: newRefreshToken
 			}
 		);
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { id, createdAt, updatedAt, refreshToken, password, ...user } = newUser;
 		return {
 			user: user,
@@ -57,7 +54,7 @@ export class AuthService {
 		}
 
 		const hashedPassword = await hash(user.password);
-		const refreshToken = this.createRefreshToken({ email: user.email, roles: [Roles.USER] });
+		const refreshToken = this.createRefreshToken({ email: user.email, roles: [Role.USER] });
 
 		const userData = {
 			email: user.email,
@@ -65,7 +62,7 @@ export class AuthService {
 			firstName: user.firstName,
 			lastName: user.lastName,
 			password: hashedPassword,
-			roles: [Roles.USER],
+			roles: [Role.USER],
 			refreshToken
 		};
 
@@ -75,7 +72,6 @@ export class AuthService {
 	}
 
 	async refreshToken(refreshToken: string): Promise<Omit<TokensDto, "refreshToken">> {
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
 		const { iat, exp, ...payload } = await this.jwtService.verify(refreshToken);
 		const user = await this.userService.findByEmail(payload.email);
 		if (!user) {
@@ -88,11 +84,11 @@ export class AuthService {
 		}
 	}
 
-	createAccessToken(payload: { email: string; roles: Roles[] }) {
+	createAccessToken(payload: { email: string; roles: Role[] }) {
 		return this.jwtService.sign(payload);
 	}
 
-	createRefreshToken(payload: { email: string; roles: Roles[] }) {
+	createRefreshToken(payload: { email: string; roles: Role[] }) {
 		return this.jwtService.sign(payload, { expiresIn: "7d" });
 	}
 }

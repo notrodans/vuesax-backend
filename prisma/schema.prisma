@@ -18,13 +18,13 @@ model User {
   lastName     String
   password     String
   cart         Product[]
-  roles        Roles[]
+  role         Role      @default(USER)
   refreshToken String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 }
 
-enum Roles {
+enum Role {
   USER
   ADMIN
 }
@@ -33,7 +33,7 @@ model Product {
   id          Int       @id @default(autoincrement())
   title       String
   description String
-  rating      String
+  rating      Int       @default(5)
   brand       String
   cost        Int
   images      String[]
