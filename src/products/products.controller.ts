@@ -1,8 +1,10 @@
 import {
+	BadRequestException,
 	Body,
 	Controller,
 	Delete,
 	Get,
+	NotFoundException,
 	Param,
 	Patch,
 	Post,
@@ -23,39 +25,64 @@ export class ProductController {
 	constructor(private readonly productService: ProductService) {}
 
 	@Get(":id")
-	async findProduct(@Param() id: Prisma.ProductWhereUniqueInput) {
-		return await this.productService.findUnique(id);
+	async findProduct(@Param("id") id: string) {
+		const product = await this.productService.findUnique({ id: +id });
+		if (!product) {
+			throw new NotFoundException("Product is not exists");
+		}
+		return product;
 	}
 
-	@Get("many/:where")
-	async findManyProduct(@Param() where: Prisma.ProductWhereUniqueInput) {
-		return await this.productService.findMany(where);
+	@Get("bySlug/:slug")
+	async findManyProduct(@Param("slug") slug: string) {
+		const products = await this.productService.findMany({ categorySlug: slug });
+		if (!products) {
+			throw new NotFoundException("Products was not find");
+		}
+		return products;
 	}
 
 	@Get()
 	async findAllProduct() {
-		return await this.productService.findAllProduct();
+		const products = await this.productService.findAllProduct();
+		if (!products) {
+			throw new NotFoundException("Products was not find");
+		}
+		return products;
 	}
 
 	@UsePipes(ValidationPipe)
 	@Roles(Role.ADMIN)
 	@UseGuards(JwtAuthGuard, RolesGuard)
-	@Post("create")
+	@Post()
 	async create(@Body() product: ProductDto) {
+		const oldProduct = await this.productService.findUnique({ title: product.title });
+		if (oldProduct) {
+			throw new BadRequestException("Product is already exist");
+		}
 		return await this.productService.create(product);
 	}
 
 	@Roles(Role.ADMIN)
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Delete(":id")
-	async delete(@Param() id: Prisma.ProductWhereUniqueInput) {
-		return await this.productService.delete(id);
+	async delete(@Param("id") id: string) {
+		const oldProduct = await this.productService.findUnique({ id: +id });
+		if (!oldProduct) {
+			throw new BadRequestException("Product is not exists");
+		}
+		return await this.productService.delete({ id: +id });
 	}
 
+	@UsePipes(ValidationPipe)
 	@Roles(Role.ADMIN)
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Patch(":id")
 	async update(@Param() id: Prisma.ProductWhereUniqueInput, @Body() data: ProductUpdateDto) {
+		const oldProduct = await this.productService.findUnique({ id: +id });
+		if (!oldProduct) {
+			throw new NotFoundException("Product is not exists");
+		}
 		return await this.productService.update(id, data);
 	}
 }

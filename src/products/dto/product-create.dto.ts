@@ -1,25 +1,23 @@
-import { IsNumber, IsString, MaxLength, MinLength } from "class-validator";
+import { IsNumber, IsString } from "class-validator";
 
 export class ProductDto {
-	@IsNumber()
-	id: number;
-
 	@IsString()
 	title: string;
 
 	@IsString()
-	description: string;
+	slug: string;
 
-	@IsNumber()
-	@MinLength(1)
-	@MaxLength(5)
-	rating: number;
+	@IsString()
+	description: string;
 
 	@IsString()
 	brand: string;
 
 	@IsNumber()
-	cost: number;
+	price: number;
+
+	@IsString()
+	primaryImage: string;
 
 	@IsString({ each: true })
 	images: string[];
