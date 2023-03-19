@@ -2,6 +2,7 @@ import { Body, UseGuards, Controller, Post, HttpCode, Patch } from "@nestjs/comm
 import { JwtService } from "@nestjs/jwt";
 import { Prisma } from "@prisma/client";
 import { JwtAuthGuard } from "../auth/guards/auth-guard";
+import { User } from "../decorators/user.decorator";
 import { UserService } from "./user.service";
 
 @Controller("user")
@@ -18,7 +19,10 @@ export class UserController {
 
 	@UseGuards(JwtAuthGuard)
 	@Patch("update")
-	async update(@Body() updateBody: { email: string; data: Prisma.UserUpdateInput }) {
-		return await this.userService.update({ email: updateBody.email }, updateBody.data);
+	async update(
+		@User() user: Prisma.UserCreateInput,
+		@Body() updateBody: { data: Prisma.UserUpdateInput }
+	) {
+		return await this.userService.update({ email: user.email }, updateBody.data);
 	}
 }
