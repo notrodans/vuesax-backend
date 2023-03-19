@@ -62,7 +62,7 @@ export class AuthService {
 			firstName: user.firstName,
 			lastName: user.lastName,
 			password: hashedPassword,
-			roles: [Role.USER],
+			role: Role.USER,
 			refreshToken
 		};
 
