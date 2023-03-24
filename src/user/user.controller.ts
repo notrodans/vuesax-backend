@@ -1,4 +1,12 @@
-import { Body, UseGuards, Controller, Post, HttpCode, Patch } from "@nestjs/common";
+import {
+	Body,
+	UseGuards,
+	Controller,
+	Post,
+	HttpCode,
+	Patch,
+	UnauthorizedException
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { Prisma } from "@prisma/client";
 import { JwtAuthGuard } from "../auth/guards/auth-guard";
@@ -14,7 +22,11 @@ export class UserController {
 	@HttpCode(200)
 	async profile(@Body() refresh: { refreshToken: string }) {
 		const { iat, exp, ...payload } = await this.jwtService.verify(refresh.refreshToken);
-		return await this.userService.findByEmail(payload.email);
+		const user = await this.userService.findByEmail(payload.email);
+		if (!user) {
+			throw new UnauthorizedException();
+		}
+		return user;
 	}
 
 	@UseGuards(JwtAuthGuard)

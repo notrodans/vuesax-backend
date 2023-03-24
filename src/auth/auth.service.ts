@@ -48,11 +48,6 @@ export class AuthService {
 	}
 
 	async register(user: AuthRegisterDto): Promise<User> {
-		const oldUser = await this.userService.findByEmail(user.email);
-		if (oldUser) {
-			throw new HttpException("User is existed", 409);
-		}
-
 		const hashedPassword = await hash(user.password);
 		const refreshToken = this.createRefreshToken({ email: user.email, roles: [Role.USER] });
 
