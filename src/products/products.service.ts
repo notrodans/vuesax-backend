@@ -10,8 +10,13 @@ export class ProductService {
 		return await this.prisma.product.findUnique({ where });
 	}
 
-	async findMany(where: Prisma.ProductWhereInput) {
-		return await this.prisma.product.findMany({ where });
+	async findMany(
+		where: Prisma.ProductWhereInput,
+		{ skip: pageNumber, take: total, ...args }: Prisma.ProductFindManyArgs
+	) {
+		const page = (pageNumber - 1) * total;
+
+		return await this.prisma.product.findMany({ where, skip: page, take: total, ...args });
 	}
 
 	async findAllProduct() {
