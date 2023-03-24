@@ -33,6 +33,7 @@ model Product {
   description  String
   rating       Float     @default(5)
   brand        String
+  brandSlug    String
   price        Int
   primaryImage String
   images       String[]
