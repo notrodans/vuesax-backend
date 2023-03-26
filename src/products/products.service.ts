@@ -3,20 +3,17 @@ import { Prisma } from "@prisma/client";
 import { PrismaService } from "../database/prisma.service";
 
 @Injectable()
-export class ProductService {
+export class ProductsService {
 	constructor(private readonly prisma: PrismaService) {}
 
-	async findUnique(where: Prisma.ProductWhereUniqueInput) {
-		return await this.prisma.product.findUnique({ where });
+	async find(where: Prisma.ProductWhereInput) {
+		return await this.prisma.product.findFirst({
+			where
+		});
 	}
 
-	async findMany(
-		where: Prisma.ProductWhereInput,
-		{ skip: pageNumber, take: total, ...args }: Prisma.ProductFindManyArgs
-	) {
-		const page = (pageNumber - 1) * total;
-
-		return await this.prisma.product.findMany({ where, skip: page, take: total, ...args });
+	async findMany(select: Prisma.ProductFindManyArgs) {
+		return await this.prisma.product.findMany(select);
 	}
 
 	async findAllProduct() {

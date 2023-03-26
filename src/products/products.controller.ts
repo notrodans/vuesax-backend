@@ -20,63 +20,70 @@ import { RolesGuard } from "../auth/guards/role.guard";
 import { Roles } from "../decorators/role.decorator";
 import { ProductDto } from "./dto/product-create.dto";
 import { ProductUpdateDto } from "./dto/product-update.dto";
-import { ProductService } from "./products.service";
+import { ProductsService } from "./products.service";
 
 @Controller("products")
-export class ProductController {
-	constructor(private readonly productService: ProductService) {}
+export class ProductsController {
+	constructor(private readonly productService: ProductsService) {}
 
-	@Get(":id")
-	async findProduct(@Param("id") id: string) {
-		const product = await this.productService.findUnique({ id: +id });
+	@Get(":slug")
+	async findProduct(@Param("slug") slug: string) {
+		const product = await this.productService.find({
+			slug: { contains: slug, mode: "insensitive" }
+		});
 		if (!product) {
 			throw new NotFoundException("Product is not exists");
 		}
 		return product;
 	}
 
-	@Get("bySlug/:slug")
+	@Get("bySlug/:categorySlug")
 	async findManyProduct(
-		@Param("slug") slug?: string,
+		@Param("categorySlug") slug?: string,
 		@Query("search") search?: string,
 		@Query("page") page?: string,
 		@Query("total") total?: string,
 		@Query("rating") rating?: string,
-		@Query("price", new ParseArrayPipe({ items: Number, separator: "," })) price?: [number, number],
+		@Query("price", new ParseArrayPipe({ items: Number, separator: ",", optional: true }))
+		price?: [number, number],
 		@Query("brands", new ParseArrayPipe({ items: String, separator: ",", optional: true }))
 		brands?: string[]
 	) {
-		const where: Prisma.ProductWhereInput = {};
+		const select: Prisma.ProductFindManyArgs = {
+			where: {}
+		};
 
 		if (search) {
-			Object.assign(where, { title: { contains: search } });
+			Object.assign(select.where, { title: { contains: search, mode: "insensitive" } });
 		}
 
 		if (brands) {
-			Object.assign(where, { brandSlug: { in: brands } });
+			Object.assign(select.where, { brandSlug: { in: brands } });
 		}
 
 		if (slug) {
-			Object.assign(where, { categorySlug: { contains: slug } });
+			Object.assign(select.where, { categorySlug: { contains: slug, mode: "insensitive" } });
 		}
 
 		if (rating) {
-			Object.assign(where, { rating: { gte: +rating } });
+			Object.assign(select.where, { rating: { gte: +rating } });
 		}
 
 		if (price) {
-			Object.assign(where, { price: { gte: price[0], lte: price[1] } });
+			Object.assign(select.where, { price: { gte: price[0], lte: price[1] } });
 		}
 
-		const products = await this.productService.findMany(where, {
-			skip: page ? +page : 1,
-			take: total ? +total : 10
-		});
-
-		if (!products.length) {
-			throw new NotFoundException("Products was not find");
+		if (page) {
+			Object.assign(select, { skip: (+page - 1) * +total });
 		}
-		return products;
+
+		if (total) {
+			Object.assign(select, { take: +total });
+		}
+
+		const products = await this.productService.findMany(select);
+
+		return { pages: Math.ceil(products.length / (+total || 10)), products };
 	}
 
 	@Get()
@@ -93,7 +100,7 @@ export class ProductController {
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Post()
 	async create(@Body() product: ProductDto) {
-		const oldProduct = await this.productService.findUnique({ title: product.title });
+		const oldProduct = await this.productService.find({ title: product.title });
 		if (oldProduct) {
 			throw new BadRequestException("Product is already exists");
 		}
@@ -104,7 +111,7 @@ export class ProductController {
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Delete(":id")
 	async delete(@Param("id") id: string) {
-		const oldProduct = await this.productService.findUnique({ id: +id });
+		const oldProduct = await this.productService.find({ id: +id });
 		if (!oldProduct) {
 			throw new BadRequestException("Product is not exists");
 		}
@@ -116,7 +123,7 @@ export class ProductController {
 	@UseGuards(JwtAuthGuard, RolesGuard)
 	@Patch(":id")
 	async update(@Param() id: Prisma.ProductWhereUniqueInput, @Body() data: ProductUpdateDto) {
-		const oldProduct = await this.productService.findUnique({ id: +id });
+		const oldProduct = await this.productService.find({ id: +id });
 		if (!oldProduct) {
 			throw new NotFoundException("Product is not exists");
 		}

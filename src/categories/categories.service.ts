@@ -5,15 +5,15 @@ import { CreateCategoryDto } from "./dto/create-category.dto";
 import { UpdateCategoryDto } from "./dto/update-category.dto";
 
 @Injectable()
-export class CategoryService {
+export class CategoriesService {
 	constructor(private readonly prisma: PrismaService) {}
 
 	async create(createCategoryDto: CreateCategoryDto) {
 		return await this.prisma.category.create({ data: createCategoryDto });
 	}
 
-	async findAll() {
-		return await this.prisma.category.findMany();
+	async findMany(where?: Prisma.CategoryWhereInput) {
+		return await this.prisma.category.findMany({ where });
 	}
 
 	async findUnique(where: Prisma.CategoryWhereUniqueInput) {
