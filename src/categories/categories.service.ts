@@ -12,7 +12,11 @@ export class CategoriesService {
 		return await this.prisma.category.create({ data: createCategoryDto });
 	}
 
-	async findMany(where?: Prisma.CategoryWhereInput) {
+	async findAll() {
+		return await this.prisma.category.findMany();
+	}
+
+	async findMany(where: Prisma.CategoryWhereInput) {
 		return await this.prisma.category.findMany({ where });
 	}
 
@@ -20,11 +24,11 @@ export class CategoriesService {
 		return await this.prisma.category.findUnique({ where });
 	}
 
-	async update(id: number, updateCategoryDto: UpdateCategoryDto) {
-		return await this.prisma.category.update({ where: { id }, data: updateCategoryDto });
+	async update(where: Prisma.CategoryWhereUniqueInput, updateCategoryDto: UpdateCategoryDto) {
+		return await this.prisma.category.update({ where, data: updateCategoryDto });
 	}
 
-	async remove(id: number) {
-		return await this.prisma.category.delete({ where: { id } });
+	async remove(where: Prisma.CategoryWhereUniqueInput) {
+		return await this.prisma.category.delete({ where });
 	}
 }

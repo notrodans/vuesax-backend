@@ -35,38 +35,44 @@ export class CategoriesController {
 			throw new NotFoundException("Category already exists");
 		}
 
-		return this.categoriesService.create(createCategoryDto);
+		return await this.categoriesService.create(createCategoryDto);
 	}
 
 	@Get()
 	async findAll(@Query("search") search?: string) {
 		const where: Prisma.CategoryWhereInput = {};
+
 		if (search) {
 			Object.assign(where, { name: { contains: search, mode: "insensitive" } });
 		}
-		const oldCategories = await this.categoriesService.findMany();
+
+		const oldCategories = await this.categoriesService.findAll();
+
 		if (!oldCategories) {
 			throw new NotFoundException("Categories was not find");
 		}
+
 		return await this.categoriesService.findMany(where);
 	}
 
-	@Get(":id")
-	async findOne(@Param("id") id: string) {
-		const oldCategory = await this.categoriesService.findUnique({ id: +id });
+	@Get(":slug")
+	async findOne(@Param("slug") slug: string) {
+		const oldCategory = await this.categoriesService.findUnique({ slug });
+
 		if (!oldCategory) {
 			throw new NotFoundException("Category was not find");
 		}
-		return this.categoriesService.findUnique({ id: +id });
+
+		return await this.categoriesService.findUnique({ slug });
 	}
 
-	@Patch(":id")
-	update(@Param("id") id: string, @Body() updateCategoryDto: UpdateCategoryDto) {
-		return this.categoriesService.update(+id, updateCategoryDto);
+	@Patch(":slug")
+	async update(@Param("slug") slug: string, @Body() updateCategoryDto: UpdateCategoryDto) {
+		return await this.categoriesService.update({ slug }, updateCategoryDto);
 	}
 
-	@Delete(":id")
-	remove(@Param("id") id: string) {
-		return this.categoriesService.remove(+id);
+	@Delete(":slug")
+	async remove(@Param("slug") slug: string) {
+		return await this.categoriesService.remove({ slug });
 	}
 }
